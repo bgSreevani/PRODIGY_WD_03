@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tic Tac Toe - AI Opponent</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Rubik', sans-serif;
+      background: linear-gradient(to right, #1a1a2e, #16213e);
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      color: #00f7ff;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #aaa;
+      font-size: 1rem;
+      margin-bottom: 20px;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .cell {
+      width: 100px;
+      height: 100px;
+      background: rgba(255,255,255,0.08);
+      font-size: 2.5rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 10px;
+      cursor: pointer;
+      user-select: none;
+      transition: 0.3s;
+    }
+
+    .cell:hover {
+      background-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .cell.X { color: #ff4f4f; }
+    .cell.O { color: #4f6bff; }
+
+    .cell.winner {
+      background-color: #4CAF50;
+      color: white !important;
+      box-shadow: 0 0 12px #4CAF50;
+    }
+
+    .result {
+      font-size: 1.1rem;
+      color: #ffeb3b;
+      margin-bottom: 15px;
+      min-height: 24px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      background-color: #fff;
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+      margin: 8px;
+    }
+
+    button:hover {
+      background-color: #00f7ff;
+      color: black;
+    }
+
+    #choosePlayer {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Tic Tac Toe</h1>
+    <p class="subtitle" id="subtitle">Choose your symbol</p>
+
+    <div id="choosePlayer">
+      <button onclick="choosePlayer('X')">Play as X</button>
+      <button onclick="choosePlayer('O')">Play as O</button>
+    </div>
+
+    <div class="board" id="board" style="display:none;">
+      <div class="cell" data-index="0"></div>
+      <div class="cell" data-index="1"></div>
+      <div class="cell" data-index="2"></div>
+      <div class="cell" data-index="3"></div>
+      <div class="cell" data-index="4"></div>
+      <div class="cell" data-index="5"></div>
+      <div class="cell" data-index="6"></div>
+      <div class="cell" data-index="7"></div>
+      <div class="cell" data-index="8"></div>
+    </div>
+
+    <div class="result" id="result"></div>
+    <button id="playAgain" style="display:none;">Play Again</button>
+  </div>
+
+  <script>
+    const cells = document.querySelectorAll(".cell");
+    const result = document.getElementById("result");
+    const playAgain = document.getElementById("playAgain");
+    const boardEl = document.getElementById("board");
+    const choosePlayerEl = document.getElementById("choosePlayer");
+    const subtitle = document.getElementById("subtitle");
+
+    let board = Array(9).fill("");
+    let humanPlayer = "X";
+    let aiPlayer = "O";
+    let currentPlayer = "X";
+    let gameOver = false;
+
+    const winPatterns = [
+      [0,1,2], [3,4,5], [6,7,8],
+      [0,3,6], [1,4,7], [2,5,8],
+      [0,4,8], [2,4,6]
+    ];
+
+    function choosePlayer(symbol) {
+      humanPlayer = symbol;
+      aiPlayer = symbol === "X" ? "O" : "X";
+      currentPlayer = "X";
+      choosePlayerEl.style.display = "none";
+      boardEl.style.display = "grid";
+      playAgain.style.display = "inline-block";
+      subtitle.textContent = `You are Player ${humanPlayer}`;
+      if (humanPlayer === "O") aiMove();
+    }
+
+    function handleClick(e) {
+      const index = e.target.dataset.index;
+      if (board[index] || gameOver || currentPlayer !== humanPlayer) return;
+
+      makeMove(index, humanPlayer);
+      if (!checkWinner()) {
+        currentPlayer = aiPlayer;
+        setTimeout(aiMove, 300);
+      }
+    }
+
+    function aiMove() {
+      if (gameOver) return;
+
+      let bestScore = -Infinity;
+      let move;
+      for (let i = 0; i < 9; i++) {
+        if (!board[i]) {
+          board[i] = aiPlayer;
+          let score = minimax(board, 0, false);
+          board[i] = "";
+          if (score > bestScore) {
+            bestScore = score;
+            move = i;
+          }
+        }
+      }
+
+      makeMove(move, aiPlayer);
+      if (!checkWinner()) {
+        currentPlayer = humanPlayer;
+      }
+    }
+
+    function makeMove(index, player) {
+      board[index] = player;
+      cells[index].textContent = player;
+      cells[index].classList.add(player);
+    }
+
+    function minimax(newBoard, depth, isMaximizing) {
+      for (let [a, b, c] of winPatterns) {
+        if (newBoard[a] && newBoard[a] === newBoard[b] && newBoard[a] === newBoard[c]) {
+          return newBoard[a] === aiPlayer ? 10 - depth : depth - 10;
+        }
+      }
+
+      if (!newBoard.includes("")) return 0;
+
+      if (isMaximizing) {
+        let bestScore = -Infinity;
+        for (let i = 0; i < 9; i++) {
+          if (!newBoard[i]) {
+            newBoard[i] = aiPlayer;
+            let score = minimax(newBoard, depth + 1, false);
+            newBoard[i] = "";
+            bestScore = Math.max(score, bestScore);
+          }
+        }
+        return bestScore;
+      } else {
+        let bestScore = Infinity;
+        for (let i = 0; i < 9; i++) {
+          if (!newBoard[i]) {
+            newBoard[i] = humanPlayer;
+            let score = minimax(newBoard, depth + 1, true);
+            newBoard[i] = "";
+            bestScore = Math.min(score, bestScore);
+          }
+        }
+        return bestScore;
+      }
+    }
+
+    function checkWinner() {
+      for (let pattern of winPatterns) {
+        const [a, b, c] = pattern;
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+          pattern.forEach(i => cells[i].classList.add("winner"));
+          result.textContent = `${board[a]} wins!`;
+          gameOver = true;
+          return true;
+        }
+      }
+      if (!board.includes("")) {
+        result.textContent = "It's a draw!";
+        gameOver = true;
+        return true;
+      }
+      return false;
+    }
+
+    function resetGame() {
+      board.fill("");
+      cells.forEach(cell => {
+        cell.textContent = "";
+        cell.classList.remove("X", "O", "winner");
+      });
+      result.textContent = "";
+      gameOver = false;
+      currentPlayer = "X";
+      if (humanPlayer === "O") setTimeout(aiMove, 300);
+    }
+
+    cells.forEach(cell => cell.addEventListener("click", handleClick));
+    playAgain.addEventListener("click", resetGame);
+  </script>
+</body>
+</html>
